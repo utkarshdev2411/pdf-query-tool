@@ -1,0 +1,4 @@
+langchain-community
+pymupdf
+uvicorn
+fastapi
