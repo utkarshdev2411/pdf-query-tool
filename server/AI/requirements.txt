@@ -2,3 +2,8 @@ langchain-community
 pymupdf
 uvicorn
 fastapi
+langchain-text-splitters
+langchain-google-genai
+faiss-cpu
+google-generativeai
+python-dotenv
