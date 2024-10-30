@@ -1,21 +1,16 @@
 import logging
-from fastapi import FastAPI, HTTPException
-from langchain_community.document_loaders import PyMuPDFLoader
-from database import init_db, insert_metadata
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_community.vectorstores import FAISS
-import google.generativeai as genai
-from dotenv import load_dotenv 
-import json
 import os
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.vectorstores import InMemoryVectorStore
+import json
+from fastapi import FastAPI, HTTPException
+from dotenv import load_dotenv 
+from langchain_community.document_loaders import PyMuPDFLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
+from langchain_community.vectorstores import FAISS
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
-
-
+from database import init_db, insert_metadata
 
 # Load environment variables from .env file
 load_dotenv()
@@ -33,18 +28,26 @@ app = FastAPI()
 
 @app.on_event("startup")
 def on_startup():
-    # Initialize the database on startup
+    """Initialize the database on startup."""
     init_db()
     logger.info("Database initialized")
 
 @app.get("/")
 def read_root():
-    # Root endpoint to check if the server is running
+    """Root endpoint to check if the server is running."""
     logger.info("Server is running")
     return {"message": "Server is running"}
 
 def process_pdf(pdf_path: str):
-    # Process the PDF file and store its metadata and content
+    """
+    Process the PDF file and store its metadata and content.
+    
+    Args:
+        pdf_path (str): Path to the PDF file.
+    
+    Returns:
+        dict: Message indicating the processing status.
+    """
     logger.info("Starting PDF processing")
     
     # Load the PDF document
@@ -94,20 +97,16 @@ def process_pdf(pdf_path: str):
     vector_store.save_local("faiss_index")
     logger.info("Vector store created and saved locally")
     
-    llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-pro",
-    temperature=0,
-    max_tokens=None,
-    timeout=None,
-    max_retries=2,
-    # other params...
-    )
-    
     return {"message": "Processing completed"}
 
 @app.post("/pdf")
 def read_pdf():
-    # Endpoint to process a PDF file
+    """
+    Endpoint to process a PDF file.
+    
+    Returns:
+        dict: Message indicating the processing status.
+    """
     pdf_path = "sample.pdf"
     try:
         return process_pdf(pdf_path)
@@ -115,48 +114,63 @@ def read_pdf():
         logger.error(f"Error during PDF processing: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
-
-
 @app.post('/chat')
-def chat():
-    pdf_path = "sample.pdf"
-    loader = PyMuPDFLoader(pdf_path)
-    doc = loader.load()
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
-    splits = text_splitter.split_documents(doc)
-    vectorstore = InMemoryVectorStore.from_documents(
-    documents=splits, embedding=GoogleGenerativeAIEmbeddings(model="models/embedding-001"))
+def chat2(user_question: str):
+    """
+    Endpoint to handle chat requests.
     
-    retriever = vectorstore.as_retriever()
+    Args:
+        user_question (str): The user's question.
     
-    llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-pro",
-    temperature=0,
-    max_tokens=None,
-    timeout=None,
-    max_retries=2,
-    # other params...
-    )
-    system_prompt = (
-    "You are an assistant for question-answering tasks. "
-    "Use the following pieces of retrieved context to answer "
-    "the question. If you don't know the answer, say that you "
-    "don't know. Use three sentences maximum and keep the "
-    "answer concise."
-    "\n\n"
-    "{context}"
-    )
-    prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", system_prompt),
-        ("human", "{input}"),
-    ]
-    )
-    question_answer_chain = create_stuff_documents_chain(llm, prompt)
-    rag_chain = create_retrieval_chain(retriever, question_answer_chain)
-    results = rag_chain.invoke({"input": "give sumnmary of the document in 150 words"})
-    print(results["answer"])
-    
+    Returns:
+        str: The answer to the user's question.
+    """
+    try:
+        # Load the vector store
+        vectorstore = FAISS.load_local("faiss_index", embeddings)
+        retriever = vectorstore.as_retriever()
+        
+        # Initialize the language model
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-1.5-flash",
+            temperature=0.2,
+            max_tokens=None,
+            timeout=None,
+        )
+        
+        # Define the system prompt
+        system_prompt = (
+            "You are an assistant for question-answering tasks. "
+            "Use the following pieces of retrieved context to answer "
+            "the question. If you don't know the answer, say that you "
+            "don't know. Use three sentences maximum and keep the "
+            "answer concise."
+            "\n\n"
+            "{context}"
+        )
+        
+        # Create the prompt template
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", system_prompt),
+                ("human", "{input}"),
+            ]
+        )
+        
+        # Create the question-answering chain
+        question_answer_chain = create_stuff_documents_chain(llm, prompt)
+        
+        # Create the retrieval-augmented generation (RAG) chain
+        rag_chain = create_retrieval_chain(retriever, question_answer_chain)
+        
+        # Invoke the RAG chain with the user's question
+        results = rag_chain.invoke({"input": user_question})
+        
+        # Return the result
+        return {"answer": results["answer"]}
+        
+    except Exception as e:
+        logger.error(f"Error during chat processing: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # To run the server, use the command: uvicorn app:app --reload
