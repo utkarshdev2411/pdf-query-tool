@@ -82,6 +82,9 @@ AI Planet is a web application that allows users to interact with an AI-powered 
 3. Upload PDF files using the upload button in the navigation bar.
 
 ## Project Structure
+![image](https://github.com/user-attachments/assets/243dba55-b41f-4e9b-9d2b-f9158961ac6c)
+
+
 
 ## API Endpoints
 
