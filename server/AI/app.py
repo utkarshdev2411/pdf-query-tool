@@ -3,6 +3,7 @@ import os
 import json
 from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv 
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -28,6 +29,15 @@ logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 @app.on_event("startup")
 def on_startup():
@@ -122,17 +132,83 @@ async def upload_pdf(file: UploadFile = File(...)):
         logger.error(f"Error during PDF processing: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# @app.post('/chat')
+# def chat(user_question: str):
+#     """
+#     Endpoint to handle chat requests.
+    
+#     Args:
+#         user_question (str): The user's question.
+    
+#     Returns:
+#         str: The answer to the user's question.
+#     """
+#     try:
+#         # Load the vector store
+#         vectorstore = FAISS.load_local("faiss_index", embeddings)
+#         retriever = vectorstore.as_retriever()
+        
+#         # Initialize the language model
+#         llm = ChatGoogleGenerativeAI(
+#             model="gemini-1.5-flash",
+#             temperature=0.2,
+#             max_tokens=None,
+#             timeout=None,
+#         )
+        
+#         # Define the system prompt
+#         system_prompt = (
+#             "You are an assistant for question-answering tasks. "
+#             "Use the following pieces of retrieved context to answer "
+#             "the question. If you don't know the answer, say that you "
+#             "don't know. Use three sentences maximum and keep the "
+#             "answer concise."
+#             "\n\n"
+#             "{context}"
+#         )
+        
+#         # Create the prompt template
+#         prompt = ChatPromptTemplate.from_messages(
+#             [
+#                 ("system", system_prompt),
+#                 ("human", "{input}"),
+#             ]
+#         )
+        
+#         # Create the question-answering chain
+#         question_answer_chain = create_stuff_documents_chain(llm, prompt)
+        
+#         # Create the retrieval-augmented generation (RAG) chain
+#         rag_chain = create_retrieval_chain(retriever, question_answer_chain)
+        
+#         # Invoke the RAG chain with the user's question
+#         results = rag_chain.invoke({"input": user_question})
+        
+#         # Return the result
+#         return {"answer": results["answer"]}
+        
+#     except Exception as e:
+#         logger.error(f"Error during chat processing: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
+
+# # To run the server, use the command: uvicorn app:app --reload
+from pydantic import BaseModel
+
+class ChatRequest(BaseModel):
+    user_question: str
+
 @app.post('/chat')
-def chat(user_question: str):
+def chat(request: ChatRequest):
     """
     Endpoint to handle chat requests.
     
     Args:
-        user_question (str): The user's question.
+        request (ChatRequest): The user's question wrapped in a request model.
     
     Returns:
         str: The answer to the user's question.
     """
+    user_question = request.user_question
     try:
         # Load the vector store
         vectorstore = FAISS.load_local("faiss_index", embeddings)
@@ -180,5 +256,3 @@ def chat(user_question: str):
     except Exception as e:
         logger.error(f"Error during chat processing: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-# To run the server, use the command: uvicorn app:app --reload
