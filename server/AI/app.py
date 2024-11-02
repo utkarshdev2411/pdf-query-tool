@@ -1,7 +1,8 @@
 import logging
 import os
 import json
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi.responses import FileResponse
 from dotenv import load_dotenv 
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -11,6 +12,8 @@ from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 from database import init_db, insert_metadata
+import google.generativeai as genai
+import shutil
 
 # Load environment variables from .env file
 load_dotenv()
@@ -100,22 +103,27 @@ def process_pdf(pdf_path: str):
     return {"message": "Processing completed"}
 
 @app.post("/pdf")
-def read_pdf():
+async def upload_pdf(file: UploadFile = File(...)):
     """
     Endpoint to process a PDF file.
+    
+    Args:
+        file (UploadFile): The uploaded PDF file.
     
     Returns:
         dict: Message indicating the processing status.
     """
     pdf_path = "sample.pdf"
     try:
+        with open(pdf_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
         return process_pdf(pdf_path)
     except Exception as e:
         logger.error(f"Error during PDF processing: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post('/chat')
-def chat2(user_question: str):
+def chat(user_question: str):
     """
     Endpoint to handle chat requests.
     

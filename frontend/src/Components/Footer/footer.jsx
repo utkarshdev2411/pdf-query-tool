@@ -1,5 +1,6 @@
-import React from "react";
 import "./footer.css";
+import { LuSendHorizonal } from "react-icons/lu";
+
 
 const ChatInput = () => {
   return (
@@ -9,7 +10,8 @@ const ChatInput = () => {
         className="chat-input"
         placeholder="Send a message..."
       />
-      <button className="send-button">➤</button>
+      <button className="send-button"><LuSendHorizonal size={24} />
+</button>
     </div>
   );
 };
