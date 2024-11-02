@@ -1,8 +1,11 @@
+import  { useState } from 'react';
 import { IoIosAddCircleOutline } from "react-icons/io";
 import logo from '../../assets/image.png';
 import './navbar.css';
 
 const Navbar = () => {
+  const [fileName, setFileName] = useState('');
+
   const uploadFile = () => {
     const fileInput = document.getElementById('fileInput');
     fileInput.click();
@@ -11,6 +14,7 @@ const Navbar = () => {
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
     if (file) {
+      setFileName(file.name); // Set the file name to be displayed
       const formData = new FormData();
       formData.append('file', file, 'sample.pdf');
 
@@ -36,7 +40,7 @@ const Navbar = () => {
       <div className='logo'>
         <img src={logo} alt="Logo" />
       </div>
-      <div className='upload'>
+      <div className='upload'>{fileName && <span className='file-name'>{fileName}</span>}
         <button onClick={uploadFile}>
           <IoIosAddCircleOutline size={20} /> Upload PDF
         </button>
@@ -46,6 +50,7 @@ const Navbar = () => {
           style={{ display: 'none' }}
           onChange={handleFileChange}
         />
+        
       </div>
     </div>
   );

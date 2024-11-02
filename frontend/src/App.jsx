@@ -1,15 +1,15 @@
-import './App.css'
-import Navbar from './Components/Navbar/navbar'
-import Footer from './Components/Footer/footer'
+import './App.css';
+import Navbar from './Components/Navbar/navbar';
+import Chat from './Components/Chat/chat';
 
 function App() {
   return (
     <div>
       <Navbar />
-      <Footer />
-
+      <Chat />
+      
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
