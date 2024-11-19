@@ -152,7 +152,7 @@ def chat(request: ChatRequest):
     user_question = request.user_question
     try:
         # Load the vector store
-        vectorstore = FAISS.load_local("faiss_index", embeddings)
+        vectorstore = FAISS.load_local("faiss_index", embeddings,allow_dangerous_deserialization=True)
         retriever = vectorstore.as_retriever()
         
         # Initialize the language model
